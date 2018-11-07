@@ -1,0 +1,218 @@
+---
+title: "Assignment 3"
+author: "Lauren"
+date: "November 2, 2018"
+output: html_document
+---
+
+##Q2. 
+**I decided to add a small value(0.1) to all of my values before calculating the log2. I chose this option because it prevents me from having to remove the missing values before calculating the log2 and should give a more accurate mean. If I were to remove all zero values then the mean would not be accounting for these zeros, and thus would be skewed to a higher mean. In this case, it is important to note that adding small values to zero creates a log2 of negative value.** 
+```{r}
+#import the data to R
+rna_counts <- read.csv("~/downloads/eXpress_dm_counts.csv", header=TRUE, row.names = 1, sep = ",")
+
+#define the mean_expression function
+mean_expression <- function(x, log=TRUE) { 
+        if (log==FALSE) {
+           mean(x) 
+         } else { 
+             z<-x+0.1 
+             mean(log2(z)) 
+       } 
+}
+
+#test the function
+mean_expression(rna_counts[[1]])
+mean_expression(rna_counts[[2]])
+mean_expression(rna_counts[[3]])
+
+mean_expression(rna_counts[[1]], log=FALSE)
+mean_expression(rna_counts[[2]], log=FALSE)
+mean_expression(rna_counts[[3]], log=FALSE)
+```
+
+##Q3. 
+```{r}
+#use a for loop to calculate the log transformed total_mean_expression of each sample
+mean_cols <- vector(length=55)
+for (i in 1:ncol(rna_counts)) {
+    mean_cols[i] <- mean_expression(rna_counts[, i])
+    col <- colnames(rna_counts)
+    total_mean_expression_log <- cbind(col, mean_cols)
+  }
+
+head(total_mean_expression_log)
+
+#use a for loop to calculate the total_mean_expression of each sample
+for (i in 1:ncol(rna_counts)) {
+    mean_cols[i] <- mean_expression(rna_counts[, i], log=FALSE)
+    col <- colnames(rna_counts)
+    total_mean_expression <- cbind(col, mean_cols)
+  }
+
+head(total_mean_expression)
+
+#look for patterns in expression
+total_mean_expression_matrix <- as.matrix(total_mean_expression)
+total_mean_expression_matrix[order(total_mean_expression_matrix[mean_cols])]
+```
+**Males have higher expression levels than females.**
+
+##Q4.  
+```{r}
+#use sapply to calculate the mean expression of each sample
+total_mean_expression_sapply_log <- sapply(rna_counts, mean_expression)
+total_mean_expression_sapply <- sapply(rna_counts, mean_expression, log=F)
+
+head(total_mean_expression_sapply_log)
+head(total_mean_expression_sapply)
+```
+
+
+```{r}
+#calculate which method is faster 
+system.time(for (i in 1:ncol(rna_counts)) {
+  mean_cols[i]<-mean_expression(rna_counts[, i])
+  col<-colnames(rna_counts)
+  total_mean_expression <- cbind(col, mean_cols)
+   })
+
+system.time(total_mean_expression_sapply<-sapply(rna_counts, mean_expression))
+
+```
+
+  **The sapply method is faster.**
+
+##Q5. 
+```{r}
+#use colMeans function to calculate mean expression of each sample
+total_mean_expression_easy <- colMeans(rna_counts)
+head(total_mean_expression_easy)
+
+#or to get it with log2 transformed data
+total_mean_expression_log_easy <- colMeans(log2(rna_counts+0.1))
+head(total_mean_expression_log_easy)
+```
+
+##Q6.
+```{r}
+#calculate the mean expression of each gene
+mean_gene_expression <- rowMeans(rna_counts)
+head(mean_gene_expression)
+
+#or to get it with log2 transformed:
+mean_gene_expression_log <- rowMeans(log2(rna_counts+0.1))
+head(mean_gene_expression_log)
+```
+
+##Q7.
+
+```{r}
+#calculate the mean gene expression for both large and small male head horn
+combined_gene_expression <- rowMeans(rna_counts[ ,grep("M*_*_male_hdhorn", col, value=TRUE)])
+head(combined_gene_expression)
+
+#calculate the mean gene expression for small male head horn
+sm_gene_expression <- rowMeans(rna_counts[ ,grep("M*_sm_male_hdhorn", col, value=TRUE)])
+head(sm_gene_expression)
+
+#calculate the mean gene expression for large male head horn
+lg_gene_expression <- rowMeans(rna_counts[ ,grep("M*_lg_male_hdhorn", col, value=TRUE)])
+head(lg_gene_expression)
+
+#calculate the difference in mean gene expression between large and small male head horn
+difference_mean_expression <- lg_gene_expression - sm_gene_expression
+head(difference_mean_expression)
+```
+
+##Q8.
+
+```{r}
+#calculate the log transformed mean gene expression for large and small male head horn
+combined_gene_expression_log <- log2(rowMeans(rna_counts[ ,grep("M*_*_male_hdhorn", col, value=TRUE)] + 0.1))
+
+#calculate the log transformed mean gene expression for small male head horn
+sm_gene_expression_log <- log2(rowMeans(rna_counts[ ,grep("M*_sm_male_hdhorn", col, value=TRUE)] + 0.1))
+
+#calculate the log transformed mean gene expression for large male head horn
+lg_gene_expression_log <- log2(rowMeans(rna_counts[ ,grep("M*_lg_male_hdhorn", col, value=TRUE)] + 0.1))
+
+#calculate the log transformed mean gene expression difference between large and small male head horn
+difference_mean_expression_log <- lg_gene_expression_log - sm_gene_expression_log
+
+#graph the MAplot
+library(ggplot2)
+ggplot(rna_counts, aes(x=combined_gene_expression, y=difference_mean_expression))+
+    geom_point()+
+  ggtitle("Difference in Gene Expression Between Small and Large
+          Male Asian Rhinocerous Beetle Head Horns")+
+  labs(x="Combined Mean Gene Expression of Large and Small Males", y="Difference in Mean Gene Expression 
+       Between Small and Large Males")
+
+#graph the MAplot using log transformed data
+ggplot(rna_counts, aes(x=combined_gene_expression_log, y=difference_mean_expression_log))+
+    geom_point()+
+  ggtitle("Difference in Gene Expression Between Small and Large
+          Male Asian Rhinocerous Beetle Head Horns") +
+  labs(x="Combined Mean Gene Expression of Large and Small Males", y="Difference in Mean Gene Expression 
+       Between Small and Large Males (log2(mean))")
+```
+
+##Bonus.
+```{r}
+library(dplyr)
+#Using the tidyverse, although not necessarily easier, another way to calculate the mean gene expression of each gene in small and large males
+combined_gene_expression_tidy <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_*_male_hdhorn", col)])) %>%
+     rowMeans()
+sm_gene_expression_tidy <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_sm_male_hdhorn", col)])) %>%
+     rowMeans()
+lg_gene_expression_tidy <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_lg_male_hdhorn", col)])) %>%
+     rowMeans()
+difference_mean_expression_tidy <- lg_gene_expression_tidy - sm_gene_expression_tidy
+
+#graph the result
+ggplot(rna_counts, aes(x=combined_gene_expression_tidy, y=difference_mean_expression_tidy))+
+    geom_point()+
+  ggtitle("Difference in Gene Expression Between Small and Large
+          Male Asian Rhinocerous Beetle Head Horns")+
+  labs(x="Combined Mean Gene Expression of Large and Small Males", y="Difference in Mean Gene Expression 
+       Between Small and Large Males")
+
+#for log transformed mean gene expression
+combined_gene_expression_tidy_add <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_*_male_hdhorn", col)])) + 0.1
+
+combined_gene_expression_tidy_log <- log2(rowMeans(combined_gene_expression_tidy_add))
+
+sm_gene_expression_tidy_add <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_sm_male_hdhorn", col)])) + 0.1
+     
+sm_gene_expression_tidy_log <- log2(rowMeans(sm_gene_expression_tidy_add))
+
+lg_gene_expression_tidy_add <- rna_counts %>%
+     select(colnames(rna_counts[ , grep("M*_lg_male_hdhorn", col)])) + 0.1
+     
+lg_gene_expression_tidy_log <- log2(rowMeans(lg_gene_expression_tidy_add))
+
+difference_mean_expression_tidy_log <- lg_gene_expression_tidy_log - sm_gene_expression_tidy_log
+
+#graph the result
+ggplot(rna_counts, aes(x=combined_gene_expression_tidy_log, y=difference_mean_expression_tidy_log))+
+    geom_point()+
+  ggtitle("Difference in Gene Expression Between Small and Large
+          Male Asian Rhinocerous Beetle Head Horns")+
+  labs(x="Combined Mean Gene Expression of Large and Small Males", y="Difference in Mean Gene Expression 
+       Between Small and Large Males")
+
+```
+
+
+
+
+
+
+
+
