@@ -1,0 +1,148 @@
+---
+title: "Bio720 Assignment 5"
+author: "Lauren"
+date: "November 29, 2018"
+output: 
+  html_document: 
+    keep_md: yes
+---
+2.
+```{r}
+diploid_selection <- function(p0, w_AA, w_Aa, w_aa, n = 100) {
+# Initialize vectors 
+  p <- rep(NA,n)  
+  w_bar <- rep(NA, n)
+  
+  # starting conditions
+  p[1] <- p0
+  w_bar[1] <- ((p[1]^2)*w_AA) + (2*p[1]*(1-p[1])*w_Aa) + (((1-p[1])^2)*w_aa)
+  
+  # loop from generation to generation
+  for ( i in 2:n) {
+    w_bar[i-1] <- ((p[i-1]^2)*w_AA) + (2*p[i-1]*(1-p[i-1])*w_Aa) + (((1-p[i-1])^2)*w_aa) 
+    p[i] <- ((p[i-1]^2)*(w_AA/w_bar[i-1]) + ((p[i-1]*(1-p[i-1]))*(w_Aa/w_bar[i-1])))
+             }
+  if (any(p > 0.9999)) {
+    fixation_A <- min(which.max(p > 0.9999))
+    cat("fixation for A occurs approximately at generation:", fixation_A) 
+  } else if (any(p < 0.0001)) {
+    fixation_a <- min(which.max(p < 0.0001))
+    cat("fixation for a occurs approximately at generation:", fixation_a)
+    } else {
+      maxAlleleFreq <- max(p)
+      cat("fixation of A1 does not occur, max. allele frequency is:", print(maxAlleleFreq, digits=2))
+    }
+  plot(x = 1:n, y = p, xlab="Generations", ylab="Allele frequency (p)",
+     pch = 20, col = "black", cex.lab = 1.0)
+}
+diploid_selection(p0=0.3, w_AA=1, w_Aa=0.9, w_aa=0.8, n=100)
+diploid_selection(p0=0.5, w_AA=0.9, w_Aa=0.7, w_aa=0.6, n=100)
+diploid_selection(p0=0.4, w_AA=0.8, w_Aa=0.9, w_aa=0.6, n=100)
+```
+
+3.
+```{r}
+allele_plot <- function(startfreq, allele_number, generations) {
+  
+allele_freq_A <- rep(NA, generations)
+allele_freq_A[1] <- startfreq
+
+for (i in 2:generations) {
+allele_counts <- sample(c("A", "a"), size = allele_number, replace = TRUE, prob = c(allele_freq_A[i-1], 1 - (allele_freq_A[i-1])))
+allele_freq_A[i] <- sum(allele_counts=="A")/(allele_number)
+}
+plot(x = 1:generations, y = allele_freq_A, xlab="Generations", ylab="Allele frequency (A)", pch = 20, col = "black", cex.lab = 1.0, type="l")
+allele_freq_A
+}
+allele_plot(0.6, 100, 100)
+allele_plot(0.6, 200, 100)
+allele_plot(0.6, 500, 100)
+```
+
+4.
+```{r}
+allele <- function(startfreq, allele_number, generations) {
+  
+allele_freq_A <- rep(NA, generations)
+allele_freq_A[1] <- startfreq
+
+for (i in 2:generations) {
+allele_counts <- sample(c("A", "a"), size = allele_number, replace = TRUE, prob = c(allele_freq_A[i-1], 1 - (allele_freq_A[i-1])))
+allele_freq_A[i] <- sum(allele_counts=="A")/(allele_number)
+}
+return(allele_freq_A)
+}
+
+replicate_allele <- function(fun=allele, startfreq, allele_number, generations=100, n=1000) {
+freq <- replicate(n, fun(startfreq, allele_number, generations))
+    return(sum((freq[100,]==0)/n))
+}
+replicate_allele(fun=allele, startfreq=0.5, allele_number=400)
+replicate_allele(fun=allele, startfreq=0.25, allele_number=400)
+replicate_allele(fun=allele, startfreq=0.1, allele_number=400)
+
+```
+
+5.
+```{r}
+plot(x = 1, y = 0, type="n",
+     xlab="Generations", 
+     ylab="Allele frequency (A)", 
+     xlim=c(1, 100), 
+     ylim=c(0,1),
+     main = "The influence of genetic drfit on allele frequencies")
+allele <- function(startfreq, allele_number, generations, x) {
+allele_freq_A <- rep(NA, generations)
+allele_freq_A[1] <- startfreq
+for (i in 2:generations) {
+allele_counts <- sample(c("A", "a"), size = allele_number, replace = TRUE, prob = c(allele_freq_A[i-1], 1 - (allele_freq_A[i-1])))
+allele_freq_A[i] <- sum(allele_counts=="A")/(allele_number)
+}
+lines(allele_freq_A ~ c(1:x), col=sample(rainbow(6), 1), type="l")
+}
+replicate(100, allele(0.5, 400, 100, 100))
+
+```
+
+6. 
+```{r}
+#Use set.seed to keep it the same across users
+set.seed(720)
+significant <- function(intercept, slope, sd, samplesize) {
+x <- seq(from=1, to=10, length.out = samplesize)
+y_deterministic <- intercept + (slope*x)
+y_simulated <- rnorm(length(x), mean=y_deterministic, sd)
+mod_sim <- lm(y_simulated ~ x)
+p_val_slope <- summary(mod_sim)$coef[2,4]
+p_val_slope
+}
+
+significant(intercept = 0.5, slope = 0.1, sd = 2, samplesize = 20)
+replicate_significant<-replicate(1000, significant(intercept = 0.5, slope = 0.1, sd = 2, samplesize = 20))
+
+hist(replicate_significant, xlab = "p-value", main = "Frequency of p-values over replicates")
+
+#Proportion of p<0.05
+sum(replicate_significant<0.05)/length(replicate_significant)
+
+#Change slope to 0
+significant(intercept = 0.5, slope = 0, sd = 2, samplesize = 20)
+replicate_significant_2 <- replicate(1000, significant(intercept = 0.5, slope = 0, sd = 2, samplesize = 20))
+hist(replicate_significant_2, xlab = "p-value", main = "Frequency of p-values over replicates")
+
+#Proportion of p<0.05
+sum(replicate_significant_2<0.05)/length(replicate_significant_2)
+
+#Proportion of p<0.05 increases as sample size increases
+seq1 <- seq(from=10, to=100, by=5)
+replicate_significant_3 <- rep(NA, 100)
+proportion <- rep(NA, length(seq1))
+
+for (i in 1:length(seq1)) {
+replicate_significant_3 <- replicate(100, significant(intercept=0.5, slope=0.1, sd=1.5, samplesize = seq1[i]))
+proportion[i]<-sum(replicate_significant_3<0.05)/length(replicate_significant_3)
+}
+plot(x=seq1, y=proportion, xlab="Sample Size", ylab="Proportion with p<0.05", main = "Proportion of p<0.05 with variation in sample size")
+```
+
+
